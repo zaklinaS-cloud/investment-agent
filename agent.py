@@ -103,16 +103,23 @@ class InvestmentAgent:
             px = prices.get(p.symbol)
 
             if px is not None and (px <= p.stop_loss or px >= p.take_profit):
-                self.cash += p.qty * px
+                if px <= p.stop_loss:
+                    exit_price = p.stop_loss
+                    exit_reason = 'STOP_LOSS'
+                else:
+                    exit_price = p.take_profit
+                    exit_reason = 'TAKE_PROFIT'
+
+                self.cash += p.qty * exit_price
                 self.log.append({
                     'event': 'EXIT',
                     'symbol': p.symbol,
                     'strategy': p.strategy,
-                    'price': px,
-                    'qty': p.qty
+                    'price': exit_price,
+                    'qty': p.qty,
+                    'reason': exit_reason
                 })
                 del self.positions[key]
-
         eq = self.equity(prices)
         self.peak = max(self.peak, eq)
 
