@@ -293,7 +293,7 @@ class InvestmentAgent:
                 sig.price,
                 sig.stop_loss
             )
-                        current_gross = sum(
+            current_gross = sum(
                 abs(
                     p.qty * prices.get(
                         p.symbol,
