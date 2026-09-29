@@ -251,7 +251,7 @@ class InvestmentAgent:
                 del self.positions[key]
 
         eq = self.equity(prices)
-                eq = self.equity(prices)
+        eq = self.equity(prices)
         self.peak = max(self.peak, eq)
 
         for symbol, bars in histories.items():
