@@ -251,7 +251,9 @@ class InvestmentAgent:
                 del self.positions[key]
 
         eq = self.equity(prices)
+                eq = self.equity(prices)
         self.peak = max(self.peak, eq)
+
         for symbol, bars in histories.items():
 
             if symbol in closed_symbols:
@@ -265,7 +267,7 @@ class InvestmentAgent:
 
             signals = []
 
-        for strat in self.strategies:
+            for strat in self.strategies:
                 sig = strat.signal(symbol, bars)
 
                 if sig and sig.confidence >= 0.60:
