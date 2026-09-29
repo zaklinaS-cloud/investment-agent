@@ -61,7 +61,6 @@ c2.metric('Gotówka', f'€{agent.cash:,.2f}')
 st.progress(min(1.0, max(0.0, agent.exposure(prices))), text=f'Ekspozycja portfela: {agent.exposure(prices)*100:.1f}%')
 
 st.subheader('Sterowanie')
-st.write(f"DEBUG — dzień symulacji: {st.session_state.day}")
 if st.button('▶️ Uruchom analizę rynku'):
     max_days = min(len(v) for v in st.session_state.histories.values())
 
