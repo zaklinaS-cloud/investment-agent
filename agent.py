@@ -104,19 +104,58 @@ class InvestmentAgent:
                 self.log.append({'event':'EXIT','symbol':p.symbol,'strategy':p.strategy,'price':px,'qty':p.qty})
                 del self.positions[key]
         eq=self.equity(prices); self.peak=max(self.peak,eq)
-        for symbol,bars in histories.items():
-            for strat in self.strategies:
-                key=f'{strat.name}:{symbol}'
-                if key in self.positions: continue
-                sig=strat.signal(symbol,bars)
-                if not sig or sig.confidence<0.60: continue
-                if not self.risk.allow_new_trade(eq,self.peak,self.exposure(prices)): continue
-                qty=self.risk.size(eq,sig.price,sig.stop_loss)
-                cost=qty*sig.price
-                if qty>0 and cost<=self.cash:
-                    self.cash-=cost
-                    self.positions[key]=Position(symbol,strat.name,qty,sig.price,sig.stop_loss,sig.take_profit)
-                    self.log.append({'event':'ENTRY', **asdict(sig), 'action':sig.action.value, 'qty':qty})
+        for symbol, bars in histories.items():
+    # Nie otwieraj kolejnej pozycji na tym samym instrumencie
+    if any(p.symbol == symbol for p in self.positions.values()):
+        continue
+
+    # Zbierz sygnały ze wszystkich strategii
+    signals = []
+
+    for strat in self.strategies:
+        sig = strat.signal(symbol, bars)
+
+        if sig and sig.confidence >= 0.60:
+            signals.append(sig)
+
+    # Jeśli żadna strategia nie daje sygnału, przejdź dalej
+    if not signals:
+        continue
+
+    # Wybierz tylko strategię z najwyższym confidence
+    sig = max(signals, key=lambda s: s.confidence)
+
+    if not self.risk.allow_new_trade(
+        eq, self.peak, self.exposure(prices)
+    ):
+        continue
+
+    qty = self.risk.size(
+        eq, sig.price, sig.stop_loss
+    )
+
+    cost = qty * sig.price
+
+    if qty > 0 and cost <= self.cash:
+        self.cash -= cost
+
+        key = f'{sig.strategy}:{symbol}'
+
+        self.positions[key] = Position(
+            symbol,
+            sig.strategy,
+            qty,
+            sig.price,
+            sig.stop_loss,
+            sig.take_profit
+        )
+
+        self.log.append({
+            'event': 'ENTRY',
+            **asdict(sig),
+            'action': sig.action.value,
+            'qty': qty
+        })
         return {'equity':self.equity(prices),'cash':self.cash,'positions':len(self.positions)}
 
 if __name__=='__main__':
