@@ -194,4 +194,161 @@ class InvestmentAgent:
         ]
 
     def equity(self, prices):
-        return self
+        return self.cash + sum(
+            p.qty * prices.get(p.symbol, p.entry)
+            for p in self.positions.values()
+        )
+    def exposure(self, prices):
+        eq = self.equity(prices)
+
+        gross = sum(
+            abs(p.qty * prices.get(p.symbol, p.entry))
+            for p in self.positions.values()
+        )
+
+        return gross / eq if eq else 1
+    def step(self, histories: Dict[str, List[float]]):
+        self.step_number += 1
+
+        prices = {
+            s: b[-1]
+            for s, b in histories.items()
+            if b
+        }
+
+        eq = self.equity(prices)
+        self.peak = max(self.peak, eq)
+
+        closed_symbols = set()
+
+        for key, p in list(self.positions.items()):
+            px = prices.get(p.symbol)
+
+            if px is not None and (
+                px <= p.stop_loss
+                or px >= p.take_profit
+            ):
+                if px <= p.stop_loss:
+                    exit_price = p.stop_loss
+                    exit_reason = 'STOP_LOSS'
+                else:
+                    exit_price = p.take_profit
+                    exit_reason = 'TAKE_PROFIT'
+
+                self.cash += p.qty * exit_price
+
+                self.log.append({
+                    'event': 'EXIT',
+                    'day': self.step_number,
+                    'symbol': p.symbol,
+                    'strategy': p.strategy,
+                    'price': exit_price,
+                    'qty': p.qty,
+                    'reason': exit_reason
+                })
+
+                closed_symbols.add(p.symbol)
+                del self.positions[key]
+
+        eq = self.equity(prices)
+        self.peak = max(self.peak, eq)
+        for symbol, bars in histories.items():
+
+            if symbol in closed_symbols:
+                continue
+
+            if any(
+                p.symbol == symbol
+                for p in self.positions.values()
+            ):
+                continue
+
+            signals = []
+
+        for strat in self.strategies:
+                sig = strat.signal(symbol, bars)
+
+                if sig and sig.confidence >= 0.60:
+                    signals.append(sig)
+
+            if not signals:
+                continue
+
+            sig = max(
+                signals,
+                key=lambda s: s.confidence
+            )
+
+            if not self.risk.allow_new_trade(
+                eq,
+                self.peak,
+                self.exposure(prices)
+            ):
+                continue
+
+            qty = self.risk.size(
+                eq,
+                sig.price,
+                sig.stop_loss
+            )
+                        current_gross = sum(
+                abs(
+                    p.qty * prices.get(
+                        p.symbol,
+                        p.entry
+                    )
+                )
+                for p in self.positions.values()
+            )
+
+            max_gross = (
+                eq * self.risk.max_total_exposure
+            )
+
+            available_exposure = max(
+                0.0,
+                max_gross - current_gross
+            )
+
+            qty = min(
+                qty,
+                available_exposure / sig.price
+            )
+
+            cost = qty * sig.price
+
+            if qty > 0 and cost <= self.cash:
+                self.cash -= cost
+
+                key = symbol
+
+                self.positions[key] = Position(
+                    symbol,
+                    sig.strategy,
+                    qty,
+                    sig.price,
+                    sig.stop_loss,
+                    sig.take_profit
+                )
+
+                self.log.append({
+                    'event': 'ENTRY',
+                    'day': self.step_number,
+                    **asdict(sig),
+                    'action': sig.action.value,
+                    'qty': qty
+                })
+
+        return {
+            'equity': self.equity(prices),
+            'cash': self.cash,
+            'positions': len(self.positions)
+        }
+
+
+if __name__ == '__main__':
+    print(
+        'Investment Agent v1 core ready. '
+        'Feed historical price arrays into '
+        'InvestmentAgent.step().'
+    )
