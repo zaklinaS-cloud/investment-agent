@@ -105,6 +105,8 @@ class InvestmentAgent:
                 del self.positions[key]
         eq=self.equity(prices); self.peak=max(self.peak,eq)
         for symbol, bars in histories.items():
+    print("DEBUG SYMBOL:", symbol, "OPEN:", [(p.symbol, p.strategy) for p in self.positions.values()])
+
     # Nie otwieraj kolejnej pozycji na tym samym instrumencie
     if any(p.symbol == symbol for p in self.positions.values()):
         continue
