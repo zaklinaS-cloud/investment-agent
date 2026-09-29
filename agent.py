@@ -99,6 +99,7 @@ class InvestmentAgent:
         self.peak = max(self.peak, eq)
 
         # Najpierw zamknij pozycje, które osiągnęły Stop Loss lub Take Profit
+        closed_symbols = set()
         for key, p in list(self.positions.items()):
             px = prices.get(p.symbol)
 
@@ -119,12 +120,17 @@ class InvestmentAgent:
                     'qty': p.qty,
                     'reason': exit_reason
                 })
+                closed_symbols.add(p.symbol)
                 del self.positions[key]
         eq = self.equity(prices)
         self.peak = max(self.peak, eq)
 
-        # Sprawdź każdy instrument
-        for symbol, bars in histories.items():
+            # Sprawdź każdy instrument
+            for symbol, bars in histories.items():
+
+            # Nie otwieraj ponownie instrumentu zamkniętego w tym samym kroku
+            if symbol in closed_symbols:
+                continue
 
             # Maksymalnie jedna otwarta pozycja na danym instrumencie
             if any(p.symbol == symbol for p in self.positions.values()):
