@@ -20,15 +20,31 @@ if 'agent' not in st.session_state:
 agent=st.session_state.agent
 
 def make_market(days=260):
-    rng=random.Random(42)
-    configs={'SPY':(480,.00035,.009),'AAPL':(190,.00045,.014),'MSFT':(410,.0004,.012),'BTC/USD':(65000,.0007,.025),'ETH/USD':(3400,.00065,.03)}
-    data={}
-    for sym,(start,drift,vol) in configs.items():
-        p=start; arr=[]
-        for _ in range(days):
-            p*=math.exp(drift + rng.gauss(0,vol))
-            arr.append(round(p,4))
-        data[sym]=arr
+    import yfinance as yf
+
+    tickers = {
+        "SPY": "SPY",
+        "AAPL": "AAPL",
+        "MSFT": "MSFT",
+        "BTC/USD": "BTC-USD",
+        "ETH/USD": "ETH-USD",
+    }
+
+    data = {}
+
+    for symbol, ticker in tickers.items():
+        df = yf.download(
+            ticker,
+            period="1y",
+            interval="1d",
+            auto_adjust=True,
+            progress=False
+        )
+
+        if not df.empty:
+            prices = df["Close"].dropna().tail(days)
+            data[symbol] = [float(x) for x in prices.to_numpy().flatten()]
+
     return data
 
 if not st.session_state.histories:
