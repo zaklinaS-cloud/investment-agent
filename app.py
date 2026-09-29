@@ -50,8 +50,8 @@ def make_market(days=260):
 if not st.session_state.histories:
     st.session_state.histories=make_market()
 
-prices={s:v[-1] for s,v in st.session_state.histories.items()}
-eq=agent.equity(prices)
+current_day = min(60 + st.session_state.day, min(len(v) for v in st.session_state.histories.values()))
+prices = {s: v[current_day - 1] for s, v in st.session_state.histories.items()}eq=agent.equity(prices)
 pnl=eq-agent.initial
 c1,c2=st.columns(2)
 c1.metric('Portfel', f'€{eq:,.2f}', f'{pnl:+,.2f} €')
