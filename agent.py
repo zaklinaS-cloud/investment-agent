@@ -93,7 +93,7 @@ class InvestmentAgent:
         gross=sum(abs(p.qty*prices.get(p.symbol,p.entry)) for p in self.positions.values())
         return gross/eq if eq else 1
 
-        def step(self, histories: Dict[str,List[float]]):
+    def step(self, histories: Dict[str,List[float]]):
         prices = {s: b[-1] for s, b in histories.items() if b}
         eq = self.equity(prices)
         self.peak = max(self.peak, eq)
