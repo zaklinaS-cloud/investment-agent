@@ -83,6 +83,7 @@ class InvestmentAgent:
     def __init__(self, cash=10000.0):
         self.cash=cash; self.initial=cash; self.peak=cash
         self.positions: Dict[str,Position]={}; self.log=[]
+        self.step_number = 0
         self.risk=RiskManager(); self.strategies=[DayMomentum(),SwingTrend(),LongTrend()]
 
     def equity(self, prices):
@@ -94,6 +95,7 @@ class InvestmentAgent:
         return gross/eq if eq else 1
 
     def step(self, histories: Dict[str,List[float]]):
+        self.step_number += 1
         prices = {s: b[-1] for s, b in histories.items() if b}
         eq = self.equity(prices)
         self.peak = max(self.peak, eq)
@@ -114,6 +116,7 @@ class InvestmentAgent:
                 self.cash += p.qty * exit_price
                 self.log.append({
                     'event': 'EXIT',
+                    'day': self.step_number,
                     'symbol': p.symbol,
                     'strategy': p.strategy,
                     'price': exit_price,
@@ -178,6 +181,7 @@ class InvestmentAgent:
 
                 self.log.append({
                     'event': 'ENTRY',
+                    'day': self.step_number,
                     **asdict(sig),
                     'action': sig.action.value,
                     'qty': qty
