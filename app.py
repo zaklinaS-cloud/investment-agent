@@ -61,10 +61,29 @@ st.progress(min(1.0, max(0.0, agent.exposure(prices))), text=f'Ekspozycja portfe
 
 st.subheader('Sterowanie')
 if st.button('▶️ Uruchom analizę rynku'):
-    result=agent.step(st.session_state.histories)
-    st.session_state.day += 1
-    st.success(f"Analiza zakończona. Portfel: €{result['equity']:,.2f} • Pozycje: {result['positions']}")
-    st.rerun()
+    max_days = min(len(v) for v in st.session_state.histories.values())
+
+    # Strategie potrzebują historii, więc zaczynamy od 60 świec.
+    start_day = 60
+    current_day = start_day + st.session_state.day
+
+    if current_day <= max_days:
+        visible_histories = {
+            symbol: history[:current_day]
+            for symbol, history in st.session_state.histories.items()
+        }
+
+        result = agent.step(visible_histories)
+        st.session_state.day += 1
+
+        st.success(
+            f"Dzień symulacji: {st.session_state.day} • "
+            f"Portfel: €{result['equity']:,.2f} • "
+            f"Pozycje: {result['positions']}"
+        )
+        st.rerun()
+    else:
+        st.warning("Koniec dostępnych danych historycznych.")
 
 if st.button('🔄 Resetuj symulację'):
     st.session_state.agent=InvestmentAgent(10000.0)
