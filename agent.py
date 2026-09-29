@@ -156,7 +156,7 @@ class InvestmentAgent:
             'action': sig.action.value,
             'qty': qty
         })
-        return {'equity':self.equity(prices),'cash':self.cash,'positions':len(self.positions)}
+    return {'equity':self.equity(prices),'cash':self.cash,'positions':len(self.positions)}
 
 if __name__=='__main__':
     print('Investment Agent v1 core ready. Feed historical price arrays into InvestmentAgent.step().')
