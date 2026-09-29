@@ -93,72 +93,89 @@ class InvestmentAgent:
         gross=sum(abs(p.qty*prices.get(p.symbol,p.entry)) for p in self.positions.values())
         return gross/eq if eq else 1
 
-    def step(self, histories: Dict[str,List[float]]):
-        prices={s:b[-1] for s,b in histories.items() if b}
-        eq=self.equity(prices); self.peak=max(self.peak,eq)
-        # exits first
-        for key,p in list(self.positions.items()):
-            px=prices.get(p.symbol)
-            if px is not None and (px<=p.stop_loss or px>=p.take_profit):
-                self.cash += p.qty*px
-                self.log.append({'event':'EXIT','symbol':p.symbol,'strategy':p.strategy,'price':px,'qty':p.qty})
+        def step(self, histories: Dict[str,List[float]]):
+        prices = {s: b[-1] for s, b in histories.items() if b}
+        eq = self.equity(prices)
+        self.peak = max(self.peak, eq)
+
+        # Najpierw zamknij pozycje, które osiągnęły Stop Loss lub Take Profit
+        for key, p in list(self.positions.items()):
+            px = prices.get(p.symbol)
+
+            if px is not None and (px <= p.stop_loss or px >= p.take_profit):
+                self.cash += p.qty * px
+                self.log.append({
+                    'event': 'EXIT',
+                    'symbol': p.symbol,
+                    'strategy': p.strategy,
+                    'price': px,
+                    'qty': p.qty
+                })
                 del self.positions[key]
-        eq=self.equity(prices); self.peak=max(self.peak,eq)
+
+        eq = self.equity(prices)
+        self.peak = max(self.peak, eq)
+
+        # Sprawdź każdy instrument
         for symbol, bars in histories.items():
-    print("DEBUG SYMBOL:", symbol, "OPEN:", [(p.symbol, p.strategy) for p in self.positions.values()])
 
-    # Nie otwieraj kolejnej pozycji na tym samym instrumencie
-    if any(p.symbol == symbol for p in self.positions.values()):
-        continue
+            # Maksymalnie jedna otwarta pozycja na danym instrumencie
+            if any(p.symbol == symbol for p in self.positions.values()):
+                continue
 
-    # Zbierz sygnały ze wszystkich strategii
-    signals = []
+            # Zbierz sygnały ze wszystkich strategii
+            signals = []
 
-    for strat in self.strategies:
-        sig = strat.signal(symbol, bars)
+            for strat in self.strategies:
+                sig = strat.signal(symbol, bars)
 
-        if sig and sig.confidence >= 0.60:
-            signals.append(sig)
+                if sig and sig.confidence >= 0.60:
+                    signals.append(sig)
 
-    # Jeśli żadna strategia nie daje sygnału, przejdź dalej
-    if not signals:
-        continue
+            if not signals:
+                continue
 
-    # Wybierz tylko strategię z najwyższym confidence
-    sig = max(signals, key=lambda s: s.confidence)
+            # Wybierz strategię z najwyższym confidence
+            sig = max(signals, key=lambda s: s.confidence)
 
-    if not self.risk.allow_new_trade(
-        eq, self.peak, self.exposure(prices)
-    ):
-        continue
+            if not self.risk.allow_new_trade(
+                eq, self.peak, self.exposure(prices)
+            ):
+                continue
 
-    qty = self.risk.size(
-        eq, sig.price, sig.stop_loss
-    )
+            qty = self.risk.size(
+                eq, sig.price, sig.stop_loss
+            )
 
-    cost = qty * sig.price
+            cost = qty * sig.price
 
-    if qty > 0 and cost <= self.cash:
-        self.cash -= cost
+            if qty > 0 and cost <= self.cash:
+                self.cash -= cost
 
-        key = f'{sig.strategy}:{symbol}'
+                # Symbol jest kluczem - nie można mieć dwóch pozycji na SPY, BTC itd.
+                key = symbol
 
-        self.positions[key] = Position(
-            symbol,
-            sig.strategy,
-            qty,
-            sig.price,
-            sig.stop_loss,
-            sig.take_profit
-        )
+                self.positions[key] = Position(
+                    symbol,
+                    sig.strategy,
+                    qty,
+                    sig.price,
+                    sig.stop_loss,
+                    sig.take_profit
+                )
 
-        self.log.append({
-            'event': 'ENTRY',
-            **asdict(sig),
-            'action': sig.action.value,
-            'qty': qty
-        })
-    return {'equity':self.equity(prices),'cash':self.cash,'positions':len(self.positions)}
+                self.log.append({
+                    'event': 'ENTRY',
+                    **asdict(sig),
+                    'action': sig.action.value,
+                    'qty': qty
+                })
+
+        return {
+            'equity': self.equity(prices),
+            'cash': self.cash,
+            'positions': len(self.positions)
+        }
 
 if __name__=='__main__':
     print('Investment Agent v1 core ready. Feed historical price arrays into InvestmentAgent.step().')
