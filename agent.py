@@ -124,9 +124,8 @@ class InvestmentAgent:
                 del self.positions[key]
         eq = self.equity(prices)
         self.peak = max(self.peak, eq)
-
-            # Sprawdź każdy instrument
-            for symbol, bars in histories.items():
+        # Sprawdź każdy instrument
+        for symbol, bars in histories.items():
 
             # Nie otwieraj ponownie instrumentu zamkniętego w tym samym kroku
             if symbol in closed_symbols:
